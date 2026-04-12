@@ -1,1 +1,1 @@
-﻿export { default } from '@/app/owner/salary/page';
+export { default } from '@/app/md/salary/page';

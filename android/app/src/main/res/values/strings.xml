@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MCH</string>
+    <string name="title_activity_main">MCH</string>
+    <string name="package_name">com.mch.app</string>
+    <string name="custom_url_scheme">com.mch.app</string>
+</resources>
