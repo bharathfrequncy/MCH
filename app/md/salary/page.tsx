@@ -51,7 +51,7 @@ export default function SalaryPage() {
   const monthLabel = new Date(year, monthNum - 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
 
   return (
-    <DashboardLayout allowedRoles={['moderator', 'owner']} title="Salary Management" subtitle="View and generate monthly salary with OT wages and fine deductions">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Salary Management" subtitle="View and generate monthly salary with OT wages and fine deductions">
 
       {/* Month Selector + Generate All */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>

@@ -119,12 +119,12 @@ small { font-size: 0.8rem; color: var(--text-3); }
 }
 
 .sidebar-logo {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius);
   object-fit: contain;
-  background: var(--white);
-  padding: 4px;
+  background: transparent; /* Removed var(--white) to match original logo */
+  padding: 2px;
   flex-shrink: 0;
 }
 
@@ -632,14 +632,14 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 .login-brand-logo {
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   object-fit: contain;
-  background: var(--white);
+  background: transparent; /* Removed var(--white) to match original logo */
   border-radius: 50%;
-  padding: 12px;
+  padding: 4px; /* Reduced from 12px for 'Zoomed' effect */
   margin: 0 auto 1.5rem;
-  box-shadow: 0 0 60px rgba(200,16,46,0.4);
+  box-shadow: 0 0 60px rgba(200,16,46,0.5);
   animation: logoGlow 3s ease-in-out infinite;
 }
 

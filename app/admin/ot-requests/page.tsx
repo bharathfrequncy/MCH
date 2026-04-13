@@ -34,7 +34,7 @@ export default function OTRequestsAdminPage() {
   const declined = requests.filter(r => r.status === 'declined').length;
 
   return (
-    <DashboardLayout allowedRoles={['admin', 'moderator', 'owner']} title="OT Requests" subtitle="Review and manage overtime duty requests from staff">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="OT Requests" subtitle="Review and manage overtime duty requests from staff">
 
       {/* Summary */}
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: '1.5rem' }}>

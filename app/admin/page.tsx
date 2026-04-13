@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <DashboardLayout allowedRoles={['admin', 'moderator', 'owner']} title="Admin Dashboard" subtitle="Hospital operations overview">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Admin Dashboard" subtitle="Hospital operations overview">
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {cards.map(c => (
           <div key={c.label} className="stat-card">

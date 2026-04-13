@@ -56,7 +56,7 @@ export default function ReportsPage() {
   const fmt = (iso?: string) => iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—';
 
   return (
-    <DashboardLayout allowedRoles={['admin', 'moderator', 'owner']} title="Reports" subtitle="Generate and export hospital reports as PDF">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Reports" subtitle="Generate and export hospital reports as PDF">
 
       {/* Controls */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>

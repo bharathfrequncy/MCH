@@ -47,7 +47,7 @@ function defaultConfig(): AppConfig {
   return {
     hospitalLat: 11.0168, // Placeholder – add real coords later
     hospitalLng: 76.9558,
-    hospitalName: "MCH",
+    hospitalName: "Mother Care Hospital",
     defaultHourlyWage: 50,
     lateFineAmount: 50,
   };
@@ -462,7 +462,6 @@ export function updateLeaveAdminStatus(id: string, status: 'approved' | 'decline
 export function seedIfEmpty(): void {
   if (typeof window === 'undefined') return;
   const users = getUsers();
-  if (users.length > 0) return;
 
   // Default users
   const defaultUsers: Omit<User, 'id' | 'perMinuteWage'>[] = [
@@ -524,5 +523,10 @@ export function seedIfEmpty(): void {
     },
   ];
 
-  defaultUsers.forEach((u) => createUser(u));
+  // Only create users that don't exist by email
+  defaultUsers.forEach((u) => {
+    if (!users.some(existing => existing.email.toLowerCase() === u.email.toLowerCase())) {
+      createUser(u);
+    }
+  });
 }

@@ -39,7 +39,7 @@ export default function DepartmentsPage() {
   };
 
   return (
-    <DashboardLayout allowedRoles={['admin', 'moderator', 'owner']} title="Departments" subtitle="Manage hospital departments">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Departments" subtitle="Manage hospital departments">
       <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '1.5rem' }}>
 
         {/* Add Form */}

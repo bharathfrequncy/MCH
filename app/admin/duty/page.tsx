@@ -66,7 +66,7 @@ export default function DutyPage() {
   const getStaffDept = (id: string) => staff.find(s => s.id === id)?.department ?? '—';
 
   return (
-    <DashboardLayout allowedRoles={['admin', 'moderator', 'owner']} title="Duty Roster" subtitle="Allocate staff shifts — once saved, entries are locked">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Duty Roster" subtitle="Allocate staff shifts — once saved, entries are locked">
 
       <div className="page-header">
         <div className="page-header-left">

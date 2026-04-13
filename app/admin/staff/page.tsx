@@ -60,7 +60,7 @@ export default function AdminStaffPage() {
   const f = (k: keyof typeof form, v: string | number | boolean) => setForm(p => ({ ...p, [k]: v }));
 
   return (
-    <DashboardLayout allowedRoles={['admin', 'moderator', 'owner']} title="Staff Management" subtitle="Add, edit and manage hospital staff">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Staff Management" subtitle="Add, edit and manage hospital staff">
       <div className="page-header">
         <div className="page-header-left">
           <div className="page-title">Staff Members</div>

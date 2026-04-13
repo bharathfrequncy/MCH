@@ -29,7 +29,7 @@ export default function AdminAttendancePage() {
   const todayPresent = logs.filter(l => l.date === new Date().toISOString().slice(0, 10)).length;
 
   return (
-    <DashboardLayout allowedRoles={['admin', 'moderator', 'owner']} title="Attendance Log" subtitle="View all staff attendance records with geolocation">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Attendance Log" subtitle="View all staff attendance records with geolocation">
 
       {/* Stats */}
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '1.5rem' }}>

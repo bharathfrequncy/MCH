@@ -32,7 +32,7 @@ export default function FinesPage() {
   };
 
   return (
-    <DashboardLayout allowedRoles={['admin', 'moderator', 'owner']} title="Fine Management" subtitle="Track and manage early-checkout fines">
+    <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Fine Management" subtitle="Track and manage early-checkout fines">
 
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '1.5rem' }}>
         <div className="stat-card">

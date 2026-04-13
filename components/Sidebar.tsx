@@ -118,10 +118,8 @@ export default function Sidebar({ user }: { user: User }) {
     <aside className="sidebar">
       {/* Header */}
       <div className="sidebar-header">
-        <img src="/logo.png" alt="MCH Logo" className="sidebar-logo" />
-        <div className="sidebar-title">
-          MCH
-        </div>
+        <img src="/logo.png" alt="Mother Care Hospital Logo" className="sidebar-logo" />
+        <div className="sidebar-title">Mother Care Hospital</div>
       </div>
 
       {/* Nav */}

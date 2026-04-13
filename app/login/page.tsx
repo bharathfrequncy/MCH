@@ -63,9 +63,9 @@ export default function LoginPage() {
       {/* Left branding panel */}
       <div className="login-left">
         <div className="login-brand">
-          <img src="/logo.png" alt="MCH Logo" className="login-brand-logo" />
+          <img src="/logo.png" alt="Mother Care Hospital Logo" className="login-brand-logo" />
           <h1 className="login-brand-name">
-            MCH
+            Mother Care Hospital
           </h1>
           <p className="login-brand-tagline">Staff Management System &mdash; Powered by Care &amp; Precision</p>
 
