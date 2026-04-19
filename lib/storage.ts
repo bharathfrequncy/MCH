@@ -39,7 +39,7 @@ export async function login(email: string, password: string): Promise<User | nul
   
   const user = {
     ...data,
-    perMinuteWage: data.hourly_wage / 60
+    perMinuteWage: Number(data.hourly_wage) / 60
   } as User;
   
   setCurrentUser(user);
@@ -61,8 +61,8 @@ export async function getConfig(): Promise<AppConfig> {
     return {
       hospitalLat: 11.0168,
       hospitalLng: 76.9558,
-      hospitalName: "MCH",
-      defaultHourlyWage: 50,
+      hospitalName: "Mother Care Hospital",
+      defaultHourlyWage: 60,
       lateFineAmount: 50,
     };
   }
@@ -99,7 +99,7 @@ export async function getUsers(): Promise<User[]> {
   if (error) return [];
   return data.map(u => ({
     ...u,
-    perMinuteWage: u.hourly_wage / 60
+    perMinuteWage: Number(u.hourly_wage) / 60
   })) as User[];
 }
 
@@ -116,7 +116,7 @@ export async function getUserById(id: string): Promise<User | undefined> {
     .single();
 
   if (error || !data) return undefined;
-  return { ...data, perMinuteWage: data.hourly_wage / 60 } as User;
+  return { ...data, perMinuteWage: Number(data.hourly_wage) / 60 } as User;
 }
 
 export async function createUser(data: Omit<User, 'id' | 'perMinuteWage'>): Promise<User> {
@@ -140,7 +140,7 @@ export async function createUser(data: Omit<User, 'id' | 'perMinuteWage'>): Prom
     .single();
 
   if (error) throw error;
-  return { ...newUser, perMinuteWage: newUser.hourly_wage / 60 } as User;
+  return { ...newUser, perMinuteWage: Number(newUser.hourly_wage) / 60 } as User;
 }
 
 export async function updateUser(id: string, data: Partial<User>): Promise<User | null> {
@@ -165,7 +165,7 @@ export async function updateUser(id: string, data: Partial<User>): Promise<User 
     .single();
 
   if (error) return null;
-  const user = { ...updated, perMinuteWage: updated.hourly_wage / 60 } as User;
+  const user = { ...updated, perMinuteWage: Number(updated.hourly_wage) / 60 } as User;
   
   const current = getCurrentUser();
   if (current?.id === id) setCurrentUser(user);
@@ -393,10 +393,14 @@ export async function getTodayAttendance(staffId: string): Promise<AttendanceLog
   return data as unknown as AttendanceLog;
 }
 
+<<<<<<< HEAD
 export async function checkIn(
   staffId: string,
   geo?: { lat: number; lng: number; accuracy: number }
 ): Promise<{ log: AttendanceLog; lateMinutes: number; lateFineAmount: number }> {
+=======
+export async function checkIn(staffId: string, geo?: { lat: number; lng: number; accuracy: number }): Promise<{ log: AttendanceLog; lateMinutes: number; lateFineAmount: number }> {
+>>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
   const todayDate = new Date().toISOString().slice(0, 10);
   const checkInTime = new Date().toISOString();
   
@@ -404,18 +408,33 @@ export async function checkIn(
   if (!user) throw new Error('User not found');
   const expectedMinutes = (user.shiftType === '9hr' ? 9 : 8) * 60;
   
+<<<<<<< HEAD
   // Calculate lateness
   const { data: duty } = await supabase.from('mch_duties').select('start_time').eq('staff_id', staffId).eq('date', todayDate).single();
   const shiftStart = duty ? duty.start_time : '08:00';
   const startDateTime = new Date(`${todayDate}T${shiftStart}:00`);
   const checkInDateTime = new Date(checkInTime);
 
+=======
+  // Find shift start time
+  const duties = await getDutiesForStaff(staffId);
+  const duty = duties.find((d) => d.date === todayDate);
+  const shiftStart = duty ? duty.startTime : '08:00';
+  const startDateTime = new Date(`${todayDate}T${shiftStart}:00`);
+  const checkInDateTime = new Date(checkInTime);
+
+  // Calculate late minutes
+>>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
   const diffMs = checkInDateTime.getTime() - startDateTime.getTime();
   const lateMinutes = Math.max(0, Math.floor(diffMs / 60000));
   const isLate = lateMinutes > 0;
 
+<<<<<<< HEAD
   const perMinuteWage = user.perMinuteWage;
   const lateFineAmount = isLate ? Math.round(lateMinutes * perMinuteWage * 100) / 100 : 0;
+=======
+  const lateFineAmount = isLate ? Math.round(lateMinutes * user.perMinuteWage * 100) / 100 : 0;
+>>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
 
   const { data: log, error } = await supabase
     .from('mch_attendance')
@@ -435,6 +454,10 @@ export async function checkIn(
 
   if (error) throw error;
 
+<<<<<<< HEAD
+=======
+  // Create auto fine for late check-in if applicable
+>>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
   if (isLate && lateFineAmount > 0) {
     await createFine({
       staffId,
@@ -443,7 +466,11 @@ export async function checkIn(
       date: todayDate,
       fineType: 'late-checkin',
       shortfallMinutes: lateMinutes,
+<<<<<<< HEAD
       perMinuteWage,
+=======
+      perMinuteWage: user.perMinuteWage,
+>>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
       fineAmount: lateFineAmount,
     });
   }

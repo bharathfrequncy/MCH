@@ -64,10 +64,9 @@ export interface GeoPoint {
   accuracy: number;
 }
 
-export type LeaveType = 'CL' | 'EL' | 'AL';
-// CL = Casual Leave, EL = Emergency Leave, AL = Additional Leave
+export type ApprovalStatus = 'pending' | 'approved' | 'declined' | 'na';
 
-export type ApprovalStatus = 'pending' | 'approved' | 'declined';
+export type LeaveType = 'CL' | 'EL' | 'AL' | 'EC';
 
 export interface LeaveRequest {
   id: string;
@@ -76,20 +75,21 @@ export interface LeaveRequest {
   leaveType: LeaveType;
   date: string; // YYYY-MM-DD
   reason: string;
-  // Replacement info — optional for EL with no replacement
+  // Replacement info
   replacementStaffId?: string;
   replacementStaffName?: string;
-  noReplacementAvailable?: boolean;      // true when staff selects "No Replacement Staff Available"
-  noReplacementReason?: string;          // reason when no replacement is available
-  replacementStatus: 'pending' | 'accepted' | 'declined' | 'na'; // 'na' for no-replacement / AL
+  noReplacementAvailable?: boolean;
+  replacementStatus: 'pending' | 'accepted' | 'declined' | 'na';
   // Multi-level approval
   adminStatus: ApprovalStatus;
   jdStatus: ApprovalStatus;
   mdStatus: ApprovalStatus;
-  // Who acted last
   adminActedBy?: string;
   jdActedBy?: string;
   mdActedBy?: string;
+  adminNote?: string;
+  jdNote?: string;
+  mdNote?: string;
   createdAt: string;
 }
 
@@ -106,8 +106,8 @@ export interface AttendanceLog {
   shortfallMinutes?: number;
   fineAmount?: number;
   isLate?: boolean;
-  lateMinutes?: number;      // how many minutes after shift start they checked in
-  lateFineAmount?: number;   // fine for late check-in = lateMinutes × perMinuteWage
+  lateMinutes?: number;
+  lateFineAmount?: number;
   status: 'checked-in' | 'checked-out' | 'absent';
 }
 
