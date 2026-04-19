@@ -246,7 +246,7 @@ export async function createDuty(data: Omit<DutyAllocation, 'id' | 'isLocked' | 
 
 export async function editDuty(
   id: string,
-  data: { shiftType: '8hr' | '9hr'; startTime: string; endTime: string; editNote?: string },
+  data: { shiftType: string; startTime: string; endTime: string; editNote?: string },
   editorId: string
 ): Promise<DutyAllocation | null> {
   const { data: updated, error } = await supabase
@@ -609,7 +609,7 @@ export async function getLeaveRequests(): Promise<LeaveRequest[]> {
 }
 
 export async function createLeaveRequest(data: Omit<LeaveRequest, 'id' | 'replacementStatus' | 'adminStatus' | 'jdStatus' | 'mdStatus' | 'createdAt'>): Promise<LeaveRequest> {
-  const needsReplacement = data.leaveType !== 'AL' && !data.noReplacementAvailable;
+  const needsReplacement = data.leaveType !== 'AD' && !data.noReplacementAvailable;
   
   const { data: leave, error } = await supabase
     .from('mch_leaves')
@@ -653,7 +653,7 @@ export function getOverallLeaveStatus(leave: LeaveRequest): 'approved' | 'declin
   const { adminStatus, jdStatus, mdStatus, leaveType } = leave;
   if ([adminStatus, jdStatus, mdStatus].some((s) => s === 'declined')) return 'declined';
 
-  if (leaveType === 'AL') {
+  if (leaveType === 'AD') {
     return adminStatus === 'approved' && jdStatus === 'approved' && mdStatus === 'approved'
       ? 'approved'
       : 'pending';

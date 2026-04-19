@@ -11,7 +11,7 @@ export interface User {
   designation: string;
   hourlyWage: number; // ₹ per hour
   perMinuteWage: number; // derived: hourlyWage / 60
-  shiftType: '8hr' | '9hr';
+  shiftType: string;
   joinDate: string;
   password: string;
   isActive: boolean;
@@ -27,7 +27,7 @@ export interface DutyAllocation {
   id: string;
   staffId: string;
   date: string; // YYYY-MM-DD
-  shiftType: '8hr' | '9hr';
+  shiftType: string;
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
   isLocked: boolean;
@@ -66,7 +66,7 @@ export interface GeoPoint {
 
 export type ApprovalStatus = 'pending' | 'approved' | 'declined' | 'na';
 
-export type LeaveType = 'CL' | 'EL' | 'AL' | 'EC';
+export type LeaveType = 'CL' | 'EL' | 'AD' | 'EC';
 
 export interface LeaveRequest {
   id: string;

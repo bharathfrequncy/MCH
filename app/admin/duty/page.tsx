@@ -6,17 +6,19 @@ import { User, DutyAllocation } from '@/lib/types';
 import { CalendarDays, Plus, Lock, X, Copy, Info } from 'lucide-react';
 
 const SHIFTS = [
-  { label: 'Morning (6AM – 2PM)',    start: '06:00', end: '14:00', type: '8hr' as const },
-  { label: 'Afternoon (2PM – 10PM)', start: '14:00', end: '22:00', type: '8hr' as const },
-  { label: 'Night (10PM – 6AM)',     start: '22:00', end: '06:00', type: '8hr' as const },
-  { label: 'Extended (8AM – 5PM)',  start: '08:00', end: '17:00', type: '9hr' as const },
+  { label: 'Morning (8AM – 4PM)',       start: '08:00', end: '16:00', type: '8hr', editable: false },
+  { label: 'Afternoon Duty I (1PM – 9PM)',  start: '13:00', end: '21:00', type: '8hr', editable: false },
+  { label: 'Afternoon Duty II (2PM – 10PM)', start: '14:00', end: '22:00', type: '8hr', editable: false },
+  { label: 'Night Duty (8PM – 8AM)',    start: '20:00', end: '08:00', type: '12hr', editable: false },
+  { label: 'Split duty',                start: '08:00', end: '16:00', type: 'split', editable: true },
+  { label: 'CUSTOMISED DUTY',           start: '08:00', end: '16:00', type: 'custom', editable: true },
 ];
 
 export default function DutyPage() {
   const [staff, setStaff] = useState<User[]>([]);
   const [duties, setDuties] = useState<DutyAllocation[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ staffId: '', date: '', shiftIdx: 0 });
+  const [form, setForm] = useState({ staffId: '', date: '', shiftIdx: 0, startTime: '08:00', endTime: '16:00' });
   const [saving, setSaving] = useState(false);
   const [copying, setCopying] = useState(false);
   const [error, setError] = useState('');
@@ -77,8 +79,8 @@ export default function DutyPage() {
         staffId: form.staffId,
         date: form.date,
         shiftType: shift.type,
-        startTime: shift.start,
-        endTime: shift.end,
+        startTime: shift.editable ? form.startTime : shift.start,
+        endTime: shift.editable ? form.endTime : shift.end,
         allocatedBy: user?.id ?? '',
       });
       await load();
@@ -210,11 +212,17 @@ export default function DutyPage() {
                     borderRadius: 'var(--radius)', border: `1px solid ${form.shiftIdx === i ? 'var(--red)' : 'var(--border)'}`, 
                     cursor: 'pointer' 
                   }}>
-                    <input type="radio" name="shift" checked={form.shiftIdx === i} onChange={() => setForm(f => ({ ...f, shiftIdx: i }))} />
+                    <input type="radio" name="shift" checked={form.shiftIdx === i} onChange={() => setForm(f => ({ ...f, shiftIdx: i, startTime: s.start, endTime: s.end }))} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{s.label}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{s.type} shift allocation</div>
                     </div>
+                    {form.shiftIdx === i && s.editable && (
+                      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
+                        <input type="time" className="form-control" style={{ fontSize: '0.75rem', padding: '0.3rem', width: 'auto' }} value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} />
+                        <input type="time" className="form-control" style={{ fontSize: '0.75rem', padding: '0.3rem', width: 'auto' }} value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} />
+                      </div>
+                    )}
                   </label>
                 ))}
               </div>

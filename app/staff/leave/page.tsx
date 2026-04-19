@@ -11,7 +11,7 @@ export default function LeavePage() {
   const [incoming, setIncoming] = useState<LeaveRequest[]>([]);
   const [staff, setStaff] = useState<User[]>([]);
   
-  const [type, setType] = useState<'AL' | 'EL' | 'CL' | 'EC'>('CL');
+  const [type, setType] = useState<'AD' | 'EL' | 'CL' | 'EC'>('CL');
   const [date, setDate] = useState('');
   const [reason, setReason] = useState('');
   const [repId, setRepId] = useState('');
@@ -40,8 +40,8 @@ export default function LeavePage() {
     e.preventDefault();
     if (!currentUser || !date) return;
     
-    // AL has no replacement; EL can have no replacement if checked
-    const needsRep = type !== 'AL' && !noRep;
+    // AD has no replacement; EL can have no replacement if checked
+    const needsRep = type !== 'AD' && !noRep;
     if (needsRep && !repId) {
       alert("Please select a replacement staff or check 'No replacement available' (for EL).");
       return;
@@ -121,12 +121,12 @@ export default function LeavePage() {
               <select className="form-control" value={type} onChange={e => {
                 const val = e.target.value as any;
                 setType(val);
-                if (val === 'AL') setNoRep(true);
+                if (val === 'AD') setNoRep(true);
                 else setNoRep(false);
               }}>
                 <option value="CL">Casual Leave (CL)</option>
                 <option value="EC">Extra Casual (EC)</option>
-                <option value="AL">Annual Leave (AL)</option>
+                <option value="AD">Additional Leave (AD)</option>
                 <option value="EL">Earned Leave (EL)</option>
               </select>
             </div>
@@ -136,7 +136,7 @@ export default function LeavePage() {
               <input type="date" className="form-control" value={date} onChange={e => setDate(e.target.value)} required />
             </div>
 
-            {type !== 'AL' && (
+            {type !== 'AD' && (
               <div className="form-group">
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                   <input type="checkbox" checked={noRep} onChange={e => setNoRep(e.target.checked)} />
@@ -145,7 +145,7 @@ export default function LeavePage() {
               </div>
             )}
 
-            { (type !== 'AL' && !noRep) && (
+            { (type !== 'AD' && !noRep) && (
               <div className="form-group">
                 <label className="form-label form-required">Replacement Staff</label>
                 <select className="form-control" value={repId} onChange={e => setRepId(e.target.value)} required>
