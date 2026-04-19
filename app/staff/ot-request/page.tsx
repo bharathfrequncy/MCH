@@ -18,13 +18,18 @@ export default function OTRequestPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) return;
-    setUser(u);
-    setRequests(getOTRequestsForStaff(u.id));
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setDate(tomorrow.toISOString().slice(0, 10));
+    const init = async () => {
+      const u = getCurrentUser();
+      if (!u) return;
+      setUser(u);
+      const staffRequests = await getOTRequestsForStaff(u.id);
+      setRequests(staffRequests);
+      // Default date: tomorrow
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      setDate(tomorrow.toISOString().slice(0, 10));
+    };
+    init();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,22 +45,27 @@ export default function OTRequestPage() {
     }
     setSubmitting(true);
     setError('');
-    await new Promise((r) => setTimeout(r, 500));
-    const req = createOTRequest({
-      staffId: user.id,
-      staffName: user.name,
-      department: user.department,
-      date,
-      fromTime,
-      toTime,
-      reason: reason.trim(),
-      preferredShift,
-    });
-    setRequests((prev) => [...prev, req]);
-    setReason('');
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 4000);
-    setSubmitting(false);
+    
+    try {
+      const req = await createOTRequest({
+        staffId: user.id,
+        staffName: user.name,
+        department: user.department,
+        date,
+        reason: reason.trim(),
+        preferredShift,
+        fromTime,
+        toTime
+      });
+      setRequests(prev => [...prev, req]);
+      setReason('');
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 4000);
+    } catch (err) {
+      setError('Failed to submit OT request. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const statusIcon = (s: string) =>

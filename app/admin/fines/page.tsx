@@ -11,9 +11,13 @@ export default function FinesPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'paid'>('all');
   const [filterStaff, setFilterStaff] = useState('');
 
-  const load = () => {
-    setFines([...getFines()].reverse());
-    setUsers(getUsers());
+  const load = async () => {
+    const [allFines, allUsers] = await Promise.all([
+      getFines(),
+      getUsers()
+    ]);
+    setFines([...allFines].reverse());
+    setUsers(allUsers);
   };
 
   useEffect(() => { load(); }, []);
@@ -26,9 +30,9 @@ export default function FinesPage() {
   const totalPending = fines.filter(f => f.fineStatus === 'pending').reduce((s, f) => s + f.fineAmount, 0);
   const totalPaid    = fines.filter(f => f.fineStatus === 'paid').reduce((s, f) => s + f.fineAmount, 0);
 
-  const handleMarkPaid = (id: string) => {
-    markFinePaid(id);
-    load();
+  const handleMarkPaid = async (id: string) => {
+    await markFinePaid(id);
+    await load();
   };
 
   return (

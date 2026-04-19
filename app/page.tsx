@@ -7,13 +7,16 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    seedIfEmpty();
-    const user = getCurrentUser();
-    if (!user) {
-      router.replace('/login');
-    } else {
-      router.replace(`/${user.role}`);
-    }
+    const init = async () => {
+      await seedIfEmpty();
+      const user = getCurrentUser();
+      if (!user) {
+        router.replace('/login');
+      } else {
+        router.replace(`/${user.role}`);
+      }
+    };
+    init();
   }, [router]);
 
   return (

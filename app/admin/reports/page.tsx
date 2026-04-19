@@ -23,11 +23,21 @@ export default function ReportsPage() {
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setUsers(getUsers());
-    setAttLogs(getAttendanceLogs());
-    setFines(getFines());
-    setOTReqs(getOTRequests());
-    setDuties(getDuties());
+    const init = async () => {
+      const [allUsers, allAtt, allFines, allOT, allDuties] = await Promise.all([
+        getUsers(),
+        getAttendanceLogs(),
+        getFines(),
+        getOTRequests(),
+        getDuties()
+      ]);
+      setUsers(allUsers);
+      setAttLogs(allAtt);
+      setFines(allFines);
+      setOTReqs(allOT);
+      setDuties(allDuties);
+    };
+    init();
   }, []);
 
   const inRange = (dateStr: string) => dateStr >= fromDate && dateStr <= toDate;

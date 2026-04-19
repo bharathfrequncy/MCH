@@ -12,7 +12,11 @@ export default function OTRequestsAdminPage() {
   const [adminNote, setAdminNote] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const load = () => setRequests([...getOTRequests()].reverse());
+  const load = async () => {
+    const allReqs = await getOTRequests();
+    setRequests([...allReqs].reverse());
+  };
+  
   useEffect(() => { load(); }, []);
 
   const filtered = requests.filter(r => filter === 'all' ? true : r.status === filter);
@@ -21,12 +25,16 @@ export default function OTRequestsAdminPage() {
     if (!reviewModal) return;
     const adminUser = getCurrentUser();
     setSaving(true);
-    await new Promise(r => setTimeout(r, 400));
-    reviewOTRequest(reviewModal.id, status, adminNote, adminUser?.id ?? '');
-    load();
-    setReviewModal(null);
-    setAdminNote('');
-    setSaving(false);
+    try {
+      await reviewOTRequest(reviewModal.id, status, adminNote, adminUser?.id ?? '');
+      await load();
+      setReviewModal(null);
+      setAdminNote('');
+    } catch (err) {
+      console.error('Failed to review OT request:', err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const pending  = requests.filter(r => r.status === 'pending').length;

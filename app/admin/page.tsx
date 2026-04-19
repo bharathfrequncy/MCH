@@ -8,15 +8,26 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ staff: 0, pendingOT: 0, todayPresent: 0, pendingFines: 0, duties: 0, approvedOT: 0 });
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const staff = getUsers().filter(u => u.role === 'staff').length;
-    const otReqs = getOTRequests();
-    const pendingOT = otReqs.filter(r => r.status === 'pending').length;
-    const approvedOT = otReqs.filter(r => r.status === 'approved').length;
-    const todayPresent = getAttendanceLogs().filter(a => a.date === today && a.status !== 'absent').length;
-    const pendingFines = getFines().filter(f => f.fineStatus === 'pending').length;
-    const duties = getDuties().length;
-    setStats({ staff, pendingOT, todayPresent, pendingFines, duties, approvedOT });
+    const init = async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const [allUsers, otReqs, attLogs, fines, duties] = await Promise.all([
+        getUsers(),
+        getOTRequests(),
+        getAttendanceLogs(),
+        getFines(),
+        getDuties()
+      ]);
+
+      const staff = allUsers.filter(u => u.role === 'staff').length;
+      const pendingOT = otReqs.filter(r => r.status === 'pending').length;
+      const approvedOT = otReqs.filter(r => r.status === 'approved').length;
+      const todayPresent = attLogs.filter(a => a.date === today && a.status !== 'absent').length;
+      const pendingFines = fines.filter(f => f.fineStatus === 'pending').length;
+      const dutiesCount = duties.length;
+
+      setStats({ staff, pendingOT, todayPresent, pendingFines, duties: dutiesCount, approvedOT });
+    };
+    init();
   }, []);
 
   const cards = [

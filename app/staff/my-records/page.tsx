@@ -19,12 +19,22 @@ export default function MyRecordsPage() {
   });
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) return;
-    setUser(u);
-    setAttendance([...getAttendanceForStaff(u.id)].reverse());
-    setFines([...getFinesForStaff(u.id)].reverse());
-    setOTRequests([...getOTRequestsForStaff(u.id)].reverse());
+    const init = async () => {
+      const u = getCurrentUser();
+      if (!u) return;
+      setUser(u);
+      
+      const [att, stfFines, stfOT] = await Promise.all([
+        getAttendanceForStaff(u.id),
+        getFinesForStaff(u.id),
+        getOTRequestsForStaff(u.id)
+      ]);
+
+      setAttendance([...att].reverse());
+      setFines([...stfFines].reverse());
+      setOTRequests([...stfOT].reverse());
+    };
+    init();
   }, []);
 
   const filteredAttendance = attendance.filter(a => a.date.startsWith(filterMonth));

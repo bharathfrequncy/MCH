@@ -21,9 +21,11 @@ export default function AdminStaffPage() {
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const load = () => {
-    setUsers(getUsers().filter(u => u.role === 'staff'));
-    setDepts(getDepartments().map(d => d.name));
+  const load = async () => {
+    const allUsers = await getUsers();
+    setUsers(allUsers.filter(u => u.role === 'staff'));
+    const allDepts = await getDepartments();
+    setDepts(allDepts.map(d => d.name));
   };
 
   useEffect(() => { load(); }, []);
@@ -40,21 +42,25 @@ export default function AdminStaffPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await new Promise(r => setTimeout(r, 400));
-    if (editing) {
-      updateUser(editing.id, form);
-    } else {
-      createUser(form);
+    try {
+      if (editing) {
+        await updateUser(editing.id, form);
+      } else {
+        await createUser(form);
+      }
+      await load();
+      setShowModal(false);
+    } catch (err) {
+      console.error('Failed to save staff:', err);
+    } finally {
+      setSaving(false);
     }
-    load();
-    setShowModal(false);
-    setSaving(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteUser(id);
+  const handleDelete = async (id: string) => {
+    await deleteUser(id);
     setDeleteConfirm(null);
-    load();
+    await load();
   };
 
   const f = (k: keyof typeof form, v: string | number | boolean) => setForm(p => ({ ...p, [k]: v }));

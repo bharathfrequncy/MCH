@@ -12,7 +12,11 @@ export default function DepartmentsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const load = () => setDepts(getDepartments());
+  const load = async () => {
+    const allDepts = await getDepartments();
+    setDepts(allDepts);
+  };
+  
   useEffect(() => { load(); }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -24,18 +28,22 @@ export default function DepartmentsPage() {
       return;
     }
     setSaving(true);
-    await new Promise(r => setTimeout(r, 300));
-    createDepartment(trimmed);
-    setNewName('');
-    setError('');
-    load();
-    setSaving(false);
+    try {
+      await createDepartment(trimmed);
+      setNewName('');
+      setError('');
+      await load();
+    } catch (err) {
+      setError('Failed to create department.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteDepartment(id);
+  const handleDelete = async (id: string) => {
+    await deleteDepartment(id);
     setDeleteConfirm(null);
-    load();
+    await load();
   };
 
   return (

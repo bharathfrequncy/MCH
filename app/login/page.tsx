@@ -29,9 +29,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    seedIfEmpty();
-    const user = getCurrentUser();
-    if (user) router.replace(`/${user.role}`);
+    const init = async () => {
+      await seedIfEmpty();
+      const user = getCurrentUser();
+      if (user) router.replace(`/${user.role}`);
+    };
+    init();
   }, [router]);
 
   // Auto-fill demo credentials when role changes
@@ -46,8 +49,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600)); // tiny delay for UX
-    const user = login(email.trim(), password);
+    const user = await login(email.trim(), password);
     setLoading(false);
     if (!user) {
       setError('Invalid email or password. Please try again.');

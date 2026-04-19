@@ -14,9 +14,13 @@ export default function SalaryPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  const load = () => {
-    setStaff(getUsers().filter(u => u.role === 'staff'));
-    setRecords(getSalaryRecords());
+  const load = async () => {
+    const [allUsers, allSalary] = await Promise.all([
+      getUsers(),
+      getSalaryRecords()
+    ]);
+    setStaff(allUsers.filter(u => u.role === 'staff'));
+    setRecords(allSalary);
   };
 
   useEffect(() => { load(); }, []);
@@ -28,20 +32,28 @@ export default function SalaryPage() {
 
   const handleGenerate = async (staffId: string) => {
     setGenerating(staffId);
-    await new Promise(r => setTimeout(r, 500));
-    generateMonthlySalary(staffId, monthNum, year);
-    load();
-    setGenerating(null);
+    try {
+      await generateMonthlySalary(staffId, monthNum, year);
+      await load();
+    } catch (err) {
+      console.error('Failed to generate salary:', err);
+    } finally {
+      setGenerating(null);
+    }
   };
 
   const handleGenerateAll = async () => {
     setGenerating('all');
-    for (const s of staff) {
-      generateMonthlySalary(s.id, monthNum, year);
+    try {
+      for (const s of staff) {
+        await generateMonthlySalary(s.id, monthNum, year);
+      }
+      await load();
+    } catch (err) {
+      console.error('Failed to generate all salaries:', err);
+    } finally {
+      setGenerating(null);
     }
-    await new Promise(r => setTimeout(r, 600));
-    load();
-    setGenerating(null);
   };
 
   const totalNetSalary = filteredRecords.reduce((s, r) => s + r.netSalary, 0);

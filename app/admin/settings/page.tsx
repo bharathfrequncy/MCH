@@ -10,7 +10,11 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setConfig(getConfig());
+    const init = async () => {
+      const cfg = await getConfig();
+      setConfig(cfg);
+    };
+    init();
   }, []);
 
   const handleChange = (field: keyof AppConfig, value: any) => {
@@ -18,10 +22,10 @@ export default function SettingsPage() {
     setSaved(false);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (config) {
-      saveConfig(config);
+      await saveConfig(config);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     }

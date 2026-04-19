@@ -4,7 +4,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { getCurrentUser, getTodayAttendance, checkIn, checkOut } from '@/lib/storage';
 import { getCurrentPosition, isOnSite, formatGeo } from '@/lib/geo';
 import { User, AttendanceLog, Fine, GeoPoint } from '@/lib/types';
-import { MapPin, LogIn, LogOut, CheckCircle2, AlertCircle, Loader2, Navigation, Clock, AlertTriangle } from 'lucide-react';
+import { MapPin, LogIn, LogOut, CheckCircle2, AlertCircle, Loader2, Navigation } from 'lucide-react';
 
 export default function AttendancePage() {
   const [user, setUser] = useState<User | null>(null);
@@ -15,20 +15,18 @@ export default function AttendancePage() {
   const [onSite, setOnSite] = useState<boolean | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
-  const [lateAlert, setLateAlert] = useState<{ lateMinutes: number; lateFineAmount: number } | null>(null);
   const [fine, setFine] = useState<Fine | null>(null);
   const [elapsed, setElapsed] = useState('');
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) return;
-    setUser(u);
-    const todayLog = getTodayAttendance(u.id);
-    setLog(todayLog);
-    // Re-show late alert if already checked in late
-    if (todayLog?.isLate && todayLog.lateMinutes && todayLog.lateMinutes > 0) {
-      setLateAlert({ lateMinutes: todayLog.lateMinutes, lateFineAmount: todayLog.lateFineAmount ?? 0 });
-    }
+    const init = async () => {
+      const u = getCurrentUser();
+      if (!u) return;
+      setUser(u);
+      const todayLog = await getTodayAttendance(u.id);
+      setLog(todayLog);
+    };
+    init();
   }, []);
 
   // Live elapsed time
@@ -63,7 +61,6 @@ export default function AttendancePage() {
   const handleCheckIn = async () => {
     if (!user) return;
     setActionLoading(true);
-    setLateAlert(null);
     let capturedGeo: GeoPoint | undefined;
     try {
       capturedGeo = await getCurrentPosition();
@@ -72,14 +69,13 @@ export default function AttendancePage() {
     } catch {
       // Allow check-in without geo
     }
-    const result = checkIn(user.id, capturedGeo);
-    setLog(result.log);
-
-    if (result.lateMinutes > 0) {
-      setLateAlert({ lateMinutes: result.lateMinutes, lateFineAmount: result.lateFineAmount });
-      setMessage({ type: 'warning', text: 'Checked in successfully.' });
+    const { log: newLog, lateMinutes, lateFineAmount } = await checkIn(user.id, capturedGeo);
+    setLog(newLog);
+    
+    if (lateMinutes > 0) {
+      setMessage({ type: 'warning', text: `Checked in successfully, but you are ${lateMinutes}m late. A fine of ₹${lateFineAmount.toFixed(2)} has been applied.` });
     } else {
-      setMessage({ type: 'success', text: 'Checked in on time! Have a great shift.' });
+      setMessage({ type: 'success', text: 'Checked in successfully! Have a great shift.' });
     }
     setActionLoading(false);
   };
@@ -94,7 +90,7 @@ export default function AttendancePage() {
     } catch {
       // Allow checkout without geo
     }
-    const result = checkOut(log.id, capturedGeo);
+    const result = await checkOut(log.id, capturedGeo);
     setLog(result.log);
     setFine(result.fine);
     if (result.fine) {
@@ -110,32 +106,7 @@ export default function AttendancePage() {
   return (
     <DashboardLayout allowedRoles={['staff']} title="Attendance" subtitle="Mark your daily attendance with geotagging">
 
-      {/* Late check-in alert — prominent banner */}
-      {lateAlert && lateAlert.lateMinutes > 0 && (
-        <div style={{
-          display: 'flex', alignItems: 'flex-start', gap: '1rem',
-          padding: '1.25rem 1.5rem', borderRadius: 'var(--radius)',
-          background: 'rgba(239, 68, 68, 0.12)', border: '1.5px solid var(--danger)',
-          marginBottom: '1.5rem',
-        }}>
-          <AlertTriangle size={24} color="var(--danger)" style={{ flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--danger)', marginBottom: '0.25rem' }}>
-              ⚠ Late Check-In — {lateAlert.lateMinutes} minute{lateAlert.lateMinutes !== 1 ? 's' : ''} late
-            </div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-2)', lineHeight: 1.5 }}>
-              You checked in <strong>{lateAlert.lateMinutes} min</strong> after your scheduled shift start.
-              A late fine of <strong style={{ color: 'var(--danger)' }}>₹{lateAlert.lateFineAmount.toFixed(2)}</strong> has been recorded.
-            </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-3)', marginTop: '0.35rem' }}>
-              Fine calculation: {lateAlert.lateMinutes} min × ₹{user ? (user.hourlyWage / 60).toFixed(2) : '—'}/min
-              = ₹{lateAlert.lateFineAmount.toFixed(2)}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {message && !lateAlert && (
+      {message && (
         <div className={`alert alert-${message.type}`} style={{ marginBottom: '1.5rem' }}>
           {message.type === 'success' ? <CheckCircle2 /> : <AlertCircle />}
           <span>{message.text}</span>
@@ -196,11 +167,6 @@ export default function AttendancePage() {
                   <div style={{ fontWeight: 700, fontSize: '1rem' }}>
                     {new Date(log.checkInTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                   </div>
-                  {log.isLate && log.lateMinutes && log.lateMinutes > 0 && (
-                    <div style={{ fontSize: '0.7rem', color: 'var(--danger)', marginTop: '0.15rem', fontWeight: 600 }}>
-                      {log.lateMinutes} min late
-                    </div>
-                  )}
                 </div>
                 <div style={{ padding: '0.75rem', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', marginBottom: '0.25rem' }}>CHECK OUT</div>
@@ -227,13 +193,10 @@ export default function AttendancePage() {
             ) : (
               <div style={{ padding: '0.875rem', background: 'rgba(99,102,241,0.1)', borderRadius: 'var(--radius)', color: '#a5b4fc', fontSize: '0.875rem', fontWeight: 600 }}>
                 ✓ Attendance marked for today
-                {log.lateFineAmount && log.lateFineAmount > 0 && (
-                  <div style={{ color: 'var(--danger)', marginTop: '0.3rem', fontSize: '0.8rem' }}>Late Fine: ₹{log.lateFineAmount.toFixed(2)}</div>
-                )}
                 {log.fineAmount && log.fineAmount > 0 ? (
-                  <div style={{ color: 'var(--danger)', marginTop: '0.2rem' }}>Early Checkout Fine: ₹{log.fineAmount.toFixed(2)}</div>
+                  <div style={{ color: 'var(--danger)', marginTop: '0.4rem' }}>Fine: ₹{log.fineAmount.toFixed(2)}</div>
                 ) : (
-                  <div style={{ color: 'var(--success)', marginTop: '0.4rem' }}>No early checkout fine ✓</div>
+                  <div style={{ color: 'var(--success)', marginTop: '0.4rem' }}>No fine — Full shift completed ✓</div>
                 )}
               </div>
             )}
@@ -301,24 +264,23 @@ export default function AttendancePage() {
 
           <div className="divider" />
           <div style={{ fontSize: '0.78rem', color: 'var(--text-4)', lineHeight: 1.6 }}>
-            <strong style={{ color: 'var(--text-3)' }}>Note:</strong> Location is captured at check-in and check-out.
+            <strong style={{ color: 'var(--text-3)' }}>Note:</strong> Location is captured at check-in and check-out. 
             Ensure location services are enabled in your browser.
           </div>
         </div>
 
-        {/* Fine Policy Card */}
+        {/* Fine Warning Card */}
         <div className="card" style={{ gridColumn: 'span 2' }}>
           <div className="card-header">
             <h3 className="card-title">Fine Policy</h3>
             <span className="badge badge-red">Important</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
             {[
-              { icon: '⏰', title: 'Full Shift Required', desc: `Your allocated shift is ${shiftDuration}. Complete it fully to avoid early-checkout fines.` },
-              { icon: '🕐', title: 'Late Check-in Fine', desc: `Late arrival = Minutes late × ₹${user ? (user.hourlyWage / 60).toFixed(2) : '—'}/min (based on your salary).` },
-              { icon: '💸', title: 'Early Checkout Fine', desc: 'Early checkout is fined at 2× your per-minute wage for each minute short.' },
-              { icon: '📋', title: 'Formula', desc: `Late: Mins × ₹${user ? (user.hourlyWage / 60).toFixed(2) : '—'}/min | Early-out: Mins × ₹${user ? (user.hourlyWage / 60).toFixed(2) : '—'}/min × 2` },
-            ].map((item) => (
+              { icon: '⏰', title: 'Full Shift Required', desc: `Your allocated shift is ${shiftDuration}. Complete it fully to avoid fines.` },
+              { icon: '💸', title: 'Double Fine Rate', desc: 'Early checkout is fined at 2× your per-minute wage for each minute short.' },
+              { icon: '📋', title: 'Formula', desc: `Fine = Shortfall minutes × ₹${((user?.hourlyWage ?? 50) / 60).toFixed(2)}/min × 2` },
+            ].map(item => (
               <div key={item.title} style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
                 <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{item.icon}</div>
                 <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.25rem' }}>{item.title}</div>

@@ -12,8 +12,15 @@ export default function AdminAttendancePage() {
   const [filterStaff, setFilterStaff] = useState('');
 
   useEffect(() => {
-    setLogs([...getAttendanceLogs()].reverse());
-    setUsers(getUsers());
+    const init = async () => {
+      const [allLogs, allUsers] = await Promise.all([
+        getAttendanceLogs(),
+        getUsers()
+      ]);
+      setLogs([...allLogs].reverse());
+      setUsers(allUsers);
+    };
+    init();
   }, []);
 
   const getName = (id: string) => users.find(u => u.id === id)?.name ?? id;

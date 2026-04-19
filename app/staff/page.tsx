@@ -14,14 +14,24 @@ export default function StaffDashboard() {
   const [totalDays, setTotalDays] = useState(0);
 
   useEffect(() => {
-    const u = getCurrentUser();
-    if (!u) return;
-    setUser(u);
-    setTodayLog(getTodayAttendance(u.id));
-    const att = getAttendanceForStaff(u.id);
-    setTotalDays(att.filter(a => a.status === 'checked-out').length);
-    setFines(getFinesForStaff(u.id));
-    setOTRequests(getOTRequestsForStaff(u.id));
+    const init = async () => {
+      const u = getCurrentUser();
+      if (!u) return;
+      setUser(u);
+      
+      const [todayAtt, attHistory, staffFines, staffOT] = await Promise.all([
+        getTodayAttendance(u.id),
+        getAttendanceForStaff(u.id),
+        getFinesForStaff(u.id),
+        getOTRequestsForStaff(u.id)
+      ]);
+
+      setTodayLog(todayAtt);
+      setTotalDays(attHistory.filter(a => a.status === 'checked-out').length);
+      setFines(staffFines);
+      setOTRequests(staffOT);
+    };
+    init();
   }, []);
 
   const pendingFines = fines.filter(f => f.fineStatus === 'pending');
