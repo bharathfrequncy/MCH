@@ -64,18 +64,21 @@ export default function OTRequestsAdminPage() {
         <table>
           <thead>
             <tr>
-              <th>Staff</th><th>Department</th><th>OT Date</th><th>Shift</th>
+              <th>Staff</th><th>Department</th><th>OT Date</th><th>Time Range</th><th>Shift</th>
               <th>Reason</th><th>Status</th><th>Submitted</th><th>Action</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No requests found</td></tr>
+              <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No requests found</td></tr>
             ) : filtered.map(req => (
               <tr key={req.id}>
                 <td style={{ fontWeight: 600 }}>{req.staffName}</td>
                 <td><span className="chip">{req.department}</span></td>
                 <td>{req.date}</td>
+                <td style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
+                  {req.fromTime} → {req.toTime}
+                </td>
                 <td style={{ fontSize: '0.8rem', color: 'var(--text-2)' }}>{req.preferredShift}</td>
                 <td style={{ maxWidth: 180, fontSize: '0.82rem', color: 'var(--text-2)' }} title={req.reason}>
                   {req.reason.length > 50 ? req.reason.slice(0, 50) + '...' : req.reason}
@@ -111,7 +114,8 @@ export default function OTRequestsAdminPage() {
                 <div><span style={{ color: 'var(--text-3)' }}>Staff: </span><strong>{reviewModal.staffName}</strong></div>
                 <div><span style={{ color: 'var(--text-3)' }}>Dept: </span><strong>{reviewModal.department}</strong></div>
                 <div><span style={{ color: 'var(--text-3)' }}>Date: </span><strong>{reviewModal.date}</strong></div>
-                <div><span style={{ color: 'var(--text-3)' }}>Shift: </span><strong>{reviewModal.preferredShift}</strong></div>
+                <div><span style={{ color: 'var(--text-3)' }}>Time: </span><strong style={{ color: 'var(--red-light)' }}>{reviewModal.fromTime} → {reviewModal.toTime}</strong></div>
+                <div style={{ gridColumn: 'span 2' }}><span style={{ color: 'var(--text-3)' }}>Shift: </span><strong>{reviewModal.preferredShift}</strong></div>
               </div>
               <div style={{ fontSize: '0.85rem' }}>
                 <div style={{ color: 'var(--text-3)', marginBottom: '0.25rem' }}>Reason:</div>

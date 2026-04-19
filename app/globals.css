@@ -121,11 +121,13 @@ small { font-size: 0.8rem; color: var(--text-3); }
 .sidebar-logo {
   width: 48px;
   height: 48px;
-  border-radius: var(--radius);
+  border-radius: 50%;
   object-fit: contain;
-  background: transparent; /* Removed var(--white) to match original logo */
-  padding: 2px;
+  background: var(--white);
+  border: 1.5px solid var(--black);
+  padding: 3px;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .sidebar-title {
@@ -635,9 +637,10 @@ tbody tr:last-child td { border-bottom: none; }
   width: 140px;
   height: 140px;
   object-fit: contain;
-  background: transparent; /* Removed var(--white) to match original logo */
+  background: var(--white);
+  border: 3px solid var(--black);
   border-radius: 50%;
-  padding: 4px; /* Reduced from 12px for 'Zoomed' effect */
+  padding: 8px;
   margin: 0 auto 1.5rem;
   box-shadow: 0 0 60px rgba(200,16,46,0.5);
   animation: logoGlow 3s ease-in-out infinite;

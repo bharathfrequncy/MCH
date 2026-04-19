@@ -26,7 +26,7 @@ function getNavItems(role: string): NavItem[] {
     return [
       ...base,
       { href: '/staff/attendance',  label: 'Attendance',    icon: <MapPin /> },
-      { href: '/staff/leave',       label: 'Leave (EC/CL)', icon: <CalendarDays /> },
+      { href: '/staff/leave',       label: 'Leave (CL/EL/AL)', icon: <CalendarDays /> },
       { href: '/staff/ot-request',  label: 'OT Request',    icon: <ClipboardList /> },
       { href: '/staff/my-records',  label: 'My Records',    icon: <FileBarChart2 /> },
     ];
@@ -42,6 +42,7 @@ function getNavItems(role: string): NavItem[] {
       { href: '/admin/leaves',      label: 'Leaves',        icon: <CalendarDays /> },
       { href: '/admin/attendance',  label: 'Attendance',    icon: <MapPin /> },
       { href: '/admin/fines',       label: 'Fines',         icon: <AlertTriangle /> },
+      { href: '/admin/salary',      label: 'Salary',        icon: <DollarSign /> },
       { href: '/admin/reports',     label: 'Reports',       icon: <FileBarChart2 /> },
       { href: '/admin/settings',    label: 'Settings',      icon: <Settings /> },
     ];

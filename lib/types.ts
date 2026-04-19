@@ -33,6 +33,10 @@ export interface DutyAllocation {
   isLocked: boolean;
   allocatedBy: string; // admin userId
   createdAt: string;
+  // Audit trail for edits
+  editedBy?: string;
+  editedAt?: string;
+  editNote?: string;
 }
 
 export type OTRequestStatus = 'pending' | 'approved' | 'declined';
@@ -43,6 +47,8 @@ export interface OTRequest {
   staffName: string;
   department: string;
   date: string;
+  fromTime: string; // HH:mm — start of requested OT
+  toTime: string;   // HH:mm — end of requested OT
   reason: string;
   preferredShift: string;
   status: OTRequestStatus;
@@ -58,17 +64,32 @@ export interface GeoPoint {
   accuracy: number;
 }
 
+export type LeaveType = 'CL' | 'EL' | 'AL';
+// CL = Casual Leave, EL = Emergency Leave, AL = Additional Leave
+
+export type ApprovalStatus = 'pending' | 'approved' | 'declined';
+
 export interface LeaveRequest {
   id: string;
   staffId: string;
   staffName: string;
-  leaveType: 'EC' | 'CL';
+  leaveType: LeaveType;
   date: string; // YYYY-MM-DD
   reason: string;
+  // Replacement info — optional for EL with no replacement
   replacementStaffId?: string;
   replacementStaffName?: string;
-  replacementStatus: 'pending' | 'accepted' | 'declined';
-  adminStatus: 'pending' | 'approved' | 'declined';
+  noReplacementAvailable?: boolean;      // true when staff selects "No Replacement Staff Available"
+  noReplacementReason?: string;          // reason when no replacement is available
+  replacementStatus: 'pending' | 'accepted' | 'declined' | 'na'; // 'na' for no-replacement / AL
+  // Multi-level approval
+  adminStatus: ApprovalStatus;
+  jdStatus: ApprovalStatus;
+  mdStatus: ApprovalStatus;
+  // Who acted last
+  adminActedBy?: string;
+  jdActedBy?: string;
+  mdActedBy?: string;
   createdAt: string;
 }
 
@@ -85,6 +106,8 @@ export interface AttendanceLog {
   shortfallMinutes?: number;
   fineAmount?: number;
   isLate?: boolean;
+  lateMinutes?: number;      // how many minutes after shift start they checked in
+  lateFineAmount?: number;   // fine for late check-in = lateMinutes × perMinuteWage
   status: 'checked-in' | 'checked-out' | 'absent';
 }
 
@@ -94,6 +117,7 @@ export interface Fine {
   staffName: string;
   attendanceId: string;
   date: string;
+  fineType: 'early-checkout' | 'late-checkin' | 'other';
   shortfallMinutes: number;
   perMinuteWage: number;
   fineAmount: number;

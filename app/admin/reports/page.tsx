@@ -5,7 +5,7 @@ import { getAttendanceLogs, getFines, getOTRequests, getUsers, getDuties } from 
 import { AttendanceLog, Fine, OTRequest, User, DutyAllocation } from '@/lib/types';
 import { FileBarChart2, Download, Printer } from 'lucide-react';
 
-type ReportType = 'attendance' | 'fines' | 'ot' | 'duty';
+type ReportType = 'attendance' | 'fines' | 'ot' | 'duty' | 'coverage';
 
 export default function ReportsPage() {
   const [reportType, setReportType] = useState<ReportType>('attendance');
@@ -16,7 +16,6 @@ export default function ReportsPage() {
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [filterStaff, setFilterStaff] = useState('');
   const [users, setUsers] = useState<User[]>([]);
-
   const [attLogs, setAttLogs] = useState<AttendanceLog[]>([]);
   const [fines, setFines] = useState<Fine[]>([]);
   const [otReqs, setOTReqs] = useState<OTRequest[]>([]);
@@ -32,13 +31,13 @@ export default function ReportsPage() {
   }, []);
 
   const inRange = (dateStr: string) => dateStr >= fromDate && dateStr <= toDate;
-  const getName = (id: string) => users.find(u => u.id === id)?.name ?? id;
+  const getName = (id: string) => users.find((u) => u.id === id)?.name ?? id;
   const matchStaff = (id: string) => !filterStaff || id === filterStaff;
 
-  const filteredAtt   = attLogs.filter(l => inRange(l.date) && matchStaff(l.staffId));
-  const filteredFines = fines.filter(f => inRange(f.date) && matchStaff(f.staffId));
-  const filteredOT    = otReqs.filter(r => inRange(r.date) && matchStaff(r.staffId));
-  const filteredDuty  = duties.filter(d => inRange(d.date) && matchStaff(d.staffId));
+  const filteredAtt   = attLogs.filter((l) => inRange(l.date) && matchStaff(l.staffId));
+  const filteredFines = fines.filter((f) => inRange(f.date) && matchStaff(f.staffId));
+  const filteredOT    = otReqs.filter((r) => inRange(r.date) && matchStaff(r.staffId));
+  const filteredDuty  = duties.filter((d) => inRange(d.date) && matchStaff(d.staffId));
 
   const handlePrint = () => window.print();
 
@@ -55,6 +54,21 @@ export default function ReportsPage() {
 
   const fmt = (iso?: string) => iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—';
 
+  // ── Duty Coverage Report calculation
+  const today = new Date().toISOString().slice(0, 10);
+  const staffList = users.filter((u) => u.role === 'staff' && (!filterStaff || u.id === filterStaff));
+  const coverageData = staffList.map((staff) => {
+    const staffDuties = filteredDuty.filter((d) => d.staffId === staff.id);
+    const staffAtt = filteredAtt.filter((a) => a.staffId === staff.id && a.status === 'checked-out');
+    const completedDuties = staffDuties.filter((d) => staffAtt.some((a) => a.date === d.date));
+    const pastPendingDuties = staffDuties.filter((d) => d.date < today && !staffAtt.some((a) => a.date === d.date));
+    const futureDuties = staffDuties.filter((d) => d.date > today);
+    const coveragePercent = staffDuties.length > 0
+      ? Math.round((completedDuties.length / staffDuties.filter((d) => d.date <= today).length) * 100) || 0
+      : 0;
+    return { staff, staffDuties, completedDuties, pastPendingDuties, futureDuties, coveragePercent };
+  });
+
   return (
     <DashboardLayout allowedRoles={['admin', 'jd', 'md']} title="Reports" subtitle="Generate and export hospital reports as PDF">
 
@@ -64,26 +78,27 @@ export default function ReportsPage() {
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Report Type</label>
-            <select className="form-control" value={reportType} onChange={e => setReportType(e.target.value as ReportType)} id="report-type-select">
+            <select className="form-control" value={reportType} onChange={(e) => setReportType(e.target.value as ReportType)} id="report-type-select">
               <option value="attendance">Attendance Report</option>
               <option value="fines">Fine Report</option>
               <option value="ot">OT Requests Report</option>
               <option value="duty">Duty Roster Report</option>
+              <option value="coverage">Staff Duty Coverage Report</option>
             </select>
           </div>
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">From Date</label>
-            <input type="date" className="form-control" value={fromDate} onChange={e => setFromDate(e.target.value)} />
+            <input type="date" className="form-control" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">To Date</label>
-            <input type="date" className="form-control" value={toDate} onChange={e => setToDate(e.target.value)} />
+            <input type="date" className="form-control" value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
           <div className="form-group" style={{ margin: 0 }}>
             <label className="form-label">Staff (optional)</label>
-            <select className="form-control" value={filterStaff} onChange={e => setFilterStaff(e.target.value)}>
+            <select className="form-control" value={filterStaff} onChange={(e) => setFilterStaff(e.target.value)}>
               <option value="">All Staff</option>
-              {users.filter(u => u.role === 'staff').map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {users.filter((u) => u.role === 'staff').map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -104,7 +119,7 @@ export default function ReportsPage() {
             <div>
               <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--white)' }}>Mothers Care Hospital</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-3)' }}>
-                {reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report &middot; {fromDate} to {toDate}
+                {reportType === 'coverage' ? 'Staff Duty Coverage' : reportType.charAt(0).toUpperCase() + reportType.slice(1)} Report &middot; {fromDate} to {toDate}
                 {filterStaff ? ` · ${getName(filterStaff)}` : ''}
               </div>
             </div>
@@ -119,10 +134,10 @@ export default function ReportsPage() {
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                 {[
                   { label: 'Total Records', value: filteredAtt.length, color: 'var(--text-1)' },
-                  { label: 'Completed Shifts', value: filteredAtt.filter(a => a.status === 'checked-out').length, color: 'var(--success)' },
-                  { label: 'Total Fine Events', value: filteredAtt.filter(a => (a.fineAmount ?? 0) > 0).length, color: 'var(--danger)' },
-                  { label: 'Total Fine Amount', value: `₹${filteredAtt.reduce((s, a) => s + (a.fineAmount ?? 0), 0).toFixed(2)}`, color: 'var(--danger)' },
-                ].map(s => (
+                  { label: 'Completed Shifts', value: filteredAtt.filter((a) => a.status === 'checked-out').length, color: 'var(--success)' },
+                  { label: 'Late Check-ins', value: filteredAtt.filter((a) => (a.lateMinutes ?? 0) > 0).length, color: '#fbbf24' },
+                  { label: 'Total Fine Amount', value: `₹${filteredAtt.reduce((s, a) => s + (a.fineAmount ?? 0) + (a.lateFineAmount ?? 0), 0).toFixed(2)}`, color: 'var(--danger)' },
+                ].map((s) => (
                   <div key={s.label} style={{ padding: '0.75rem 1rem', background: 'var(--surface-2)', borderRadius: 'var(--radius)', minWidth: 120 }}>
                     <div style={{ fontSize: '1.25rem', fontWeight: 700, color: s.color }}>{s.value}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{s.label}</div>
@@ -131,20 +146,27 @@ export default function ReportsPage() {
               </div>
               <div className="table-wrapper">
                 <table>
-                  <thead><tr><th>Date</th><th>Staff</th><th>Check In</th><th>Check Out</th><th>Duration</th><th>Expected</th><th>Fine</th><th>Geo</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Date</th><th>Staff</th><th>Check In</th><th>Check Out</th><th>Duration</th><th>Expected</th><th>Late</th><th>Late Fine</th><th>Early-out Fine</th><th>Status</th></tr></thead>
                   <tbody>
                     {filteredAtt.length === 0
-                      ? <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No records</td></tr>
-                      : filteredAtt.map(l => (
+                      ? <tr><td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No records</td></tr>
+                      : filteredAtt.map((l) => (
                         <tr key={l.id}>
                           <td>{l.date}</td>
                           <td style={{ fontWeight: 600 }}>{getName(l.staffId)}</td>
                           <td>{fmt(l.checkInTime)}</td>
                           <td>{fmt(l.checkOutTime)}</td>
-                          <td>{l.totalMinutes != null ? `${Math.floor(l.totalMinutes/60)}h ${l.totalMinutes%60}m` : '—'}</td>
-                          <td>{l.expectedMinutes/60}h</td>
-                          <td style={{ color: (l.fineAmount??0)>0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>{(l.fineAmount??0)>0 ? `₹${l.fineAmount!.toFixed(2)}` : '✓'}</td>
-                          <td style={{ fontSize: '0.75rem' }}>{l.checkInGeo ? `${l.checkInGeo.lat.toFixed(4)},${l.checkInGeo.lng.toFixed(4)}` : 'N/A'}</td>
+                          <td>{l.totalMinutes != null ? `${Math.floor(l.totalMinutes / 60)}h ${l.totalMinutes % 60}m` : '—'}</td>
+                          <td>{l.expectedMinutes / 60}h</td>
+                          <td style={{ color: (l.lateMinutes ?? 0) > 0 ? '#fbbf24' : 'var(--success)', fontWeight: 600 }}>
+                            {(l.lateMinutes ?? 0) > 0 ? `${l.lateMinutes} min` : '✓'}
+                          </td>
+                          <td style={{ color: (l.lateFineAmount ?? 0) > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>
+                            {(l.lateFineAmount ?? 0) > 0 ? `₹${l.lateFineAmount!.toFixed(2)}` : '✓'}
+                          </td>
+                          <td style={{ color: (l.fineAmount ?? 0) > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>
+                            {(l.fineAmount ?? 0) > 0 ? `₹${l.fineAmount!.toFixed(2)}` : '✓'}
+                          </td>
                           <td><span className={`badge badge-${l.status === 'checked-out' ? 'approved' : 'info'}`}>{l.status}</span></td>
                         </tr>
                       ))
@@ -161,9 +183,9 @@ export default function ReportsPage() {
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                 {[
                   { label: 'Total Fines', value: filteredFines.length },
-                  { label: 'Pending', value: `₹${filteredFines.filter(f=>f.fineStatus==='pending').reduce((s,f)=>s+f.fineAmount,0).toFixed(2)}`, color: 'var(--danger)' },
-                  { label: 'Collected', value: `₹${filteredFines.filter(f=>f.fineStatus==='paid').reduce((s,f)=>s+f.fineAmount,0).toFixed(2)}`, color: 'var(--success)' },
-                ].map(s => (
+                  { label: 'Pending', value: `₹${filteredFines.filter((f) => f.fineStatus === 'pending').reduce((s, f) => s + f.fineAmount, 0).toFixed(2)}`, color: 'var(--danger)' },
+                  { label: 'Collected', value: `₹${filteredFines.filter((f) => f.fineStatus === 'paid').reduce((s, f) => s + f.fineAmount, 0).toFixed(2)}`, color: 'var(--success)' },
+                ].map((s) => (
                   <div key={s.label} style={{ padding: '0.75rem 1rem', background: 'var(--surface-2)', borderRadius: 'var(--radius)' }}>
                     <div style={{ fontSize: '1.25rem', fontWeight: 700, color: s.color ?? 'var(--text-1)' }}>{s.value}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{s.label}</div>
@@ -172,16 +194,17 @@ export default function ReportsPage() {
               </div>
               <div className="table-wrapper">
                 <table>
-                  <thead><tr><th>Date</th><th>Staff</th><th>Shortfall (min)</th><th>Rate/min ×2</th><th>Fine Amount</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Date</th><th>Staff</th><th>Type</th><th>Shortfall (min)</th><th>Rate/min</th><th>Fine Amount</th><th>Status</th></tr></thead>
                   <tbody>
                     {filteredFines.length === 0
-                      ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No fines</td></tr>
-                      : filteredFines.map(f => (
+                      ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No fines</td></tr>
+                      : filteredFines.map((f) => (
                         <tr key={f.id}>
                           <td>{f.date}</td>
                           <td style={{ fontWeight: 600 }}>{f.staffName}</td>
-                          <td>{f.shortfallMinutes} min</td>
-                          <td>₹{f.perMinuteWage.toFixed(2)} × 2</td>
+                          <td><span className={`badge badge-${f.fineType === 'late-checkin' ? 'info' : 'pending'}`}>{f.fineType || 'early-checkout'}</span></td>
+                          <td>{f.shortfallMinutes > 0 ? `${f.shortfallMinutes} min` : '—'}</td>
+                          <td>₹{f.perMinuteWage.toFixed(2)}{f.fineType !== 'late-checkin' ? ' × 2' : ''}</td>
                           <td style={{ fontWeight: 700, color: 'var(--danger)' }}>₹{f.fineAmount.toFixed(2)}</td>
                           <td><span className={`badge badge-${f.fineStatus === 'paid' ? 'paid' : 'pending'}`}>{f.fineStatus}</span></td>
                         </tr>
@@ -197,15 +220,16 @@ export default function ReportsPage() {
           {reportType === 'ot' && (
             <div className="table-wrapper">
               <table>
-                <thead><tr><th>Date</th><th>Staff</th><th>Department</th><th>Shift</th><th>Reason</th><th>Status</th><th>Admin Note</th></tr></thead>
+                <thead><tr><th>Date</th><th>Staff</th><th>Department</th><th>Time Range</th><th>Shift</th><th>Reason</th><th>Status</th><th>Admin Note</th></tr></thead>
                 <tbody>
                   {filteredOT.length === 0
-                    ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No OT requests</td></tr>
-                    : filteredOT.map(r => (
+                    ? <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No OT requests</td></tr>
+                    : filteredOT.map((r) => (
                       <tr key={r.id}>
                         <td>{r.date}</td>
                         <td style={{ fontWeight: 600 }}>{r.staffName}</td>
                         <td>{r.department}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--text-2)' }}>{r.fromTime} → {r.toTime}</td>
                         <td style={{ fontSize: '0.8rem' }}>{r.preferredShift}</td>
                         <td style={{ fontSize: '0.8rem', maxWidth: 180 }}>{r.reason}</td>
                         <td><span className={`badge badge-${r.status}`}>{r.status}</span></td>
@@ -222,17 +246,20 @@ export default function ReportsPage() {
           {reportType === 'duty' && (
             <div className="table-wrapper">
               <table>
-                <thead><tr><th>Date</th><th>Staff</th><th>Shift</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
+                <thead><tr><th>Date</th><th>Staff</th><th>Shift</th><th>Start</th><th>End</th><th>Edited</th><th>Status</th></tr></thead>
                 <tbody>
                   {filteredDuty.length === 0
-                    ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No duty records</td></tr>
-                    : filteredDuty.map(d => (
+                    ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No duty records</td></tr>
+                    : filteredDuty.map((d) => (
                       <tr key={d.id}>
                         <td>{d.date}</td>
                         <td style={{ fontWeight: 600 }}>{getName(d.staffId)}</td>
                         <td><span className="badge badge-info">{d.shiftType}</span></td>
                         <td>{d.startTime}</td>
                         <td>{d.endTime}</td>
+                        <td style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>
+                          {d.editedAt ? `${getName(d.editedBy ?? '')} on ${new Date(d.editedAt).toLocaleDateString('en-IN')}` : '—'}
+                        </td>
                         <td><span className="badge badge-locked">🔒 Locked</span></td>
                       </tr>
                     ))
@@ -240,6 +267,85 @@ export default function ReportsPage() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {/* ── DUTY COVERAGE REPORT ── */}
+          {reportType === 'coverage' && (
+            <>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Staff Tracked', value: coverageData.length, color: 'var(--text-1)' },
+                  { label: 'Total Duties Allocated', value: coverageData.reduce((s, d) => s + d.staffDuties.length, 0), color: '#60a5fa' },
+                  { label: 'Completed Duties', value: coverageData.reduce((s, d) => s + d.completedDuties.length, 0), color: 'var(--success)' },
+                  { label: 'Pending/Missed', value: coverageData.reduce((s, d) => s + d.pastPendingDuties.length, 0), color: 'var(--danger)' },
+                  { label: 'Upcoming Duties', value: coverageData.reduce((s, d) => s + d.futureDuties.length, 0), color: '#fbbf24' },
+                ].map((s) => (
+                  <div key={s.label} style={{ padding: '0.75rem 1rem', background: 'var(--surface-2)', borderRadius: 'var(--radius)', minWidth: 120 }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: s.color }}>{s.value}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{s.label}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Staff</th>
+                      <th>Department</th>
+                      <th>Total Duties</th>
+                      <th>Completed</th>
+                      <th>Missed / Pending Past</th>
+                      <th>Upcoming</th>
+                      <th>Coverage %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {coverageData.length === 0
+                      ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>No data in range</td></tr>
+                      : coverageData.map((row) => (
+                        <tr key={row.staff.id}>
+                          <td style={{ fontWeight: 600 }}>{row.staff.name}</td>
+                          <td><span className="chip">{row.staff.department}</span></td>
+                          <td>{row.staffDuties.length}</td>
+                          <td style={{ color: 'var(--success)', fontWeight: 600 }}>{row.completedDuties.length}</td>
+                          <td style={{ color: row.pastPendingDuties.length > 0 ? 'var(--danger)' : 'var(--text-3)', fontWeight: row.pastPendingDuties.length > 0 ? 700 : 400 }}>
+                            {row.pastPendingDuties.length}
+                            {row.pastPendingDuties.length > 0 && (
+                              <div style={{ fontSize: '0.7rem', fontWeight: 400 }}>
+                                {row.pastPendingDuties.slice(0, 3).map((d) => d.date).join(', ')}
+                                {row.pastPendingDuties.length > 3 ? `... +${row.pastPendingDuties.length - 3}` : ''}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ color: '#fbbf24', fontWeight: 600 }}>
+                            {row.futureDuties.length}
+                            {row.futureDuties.length > 0 && (
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-3)', fontWeight: 400 }}>
+                                Next: {row.futureDuties[0]?.date}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <div style={{
+                                flex: 1, height: 8, background: 'var(--surface-3)', borderRadius: 4, overflow: 'hidden',
+                              }}>
+                                <div style={{
+                                  height: '100%', borderRadius: 4,
+                                  background: row.coveragePercent >= 80 ? 'var(--success)' : row.coveragePercent >= 50 ? '#fbbf24' : 'var(--danger)',
+                                  width: `${row.coveragePercent}%`, transition: 'width 0.4s',
+                                }} />
+                              </div>
+                              <span style={{ fontWeight: 700, fontSize: '0.85rem', minWidth: 36 }}>{row.coveragePercent}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

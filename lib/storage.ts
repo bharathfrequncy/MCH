@@ -1,4 +1,4 @@
-import { User, Department, DutyAllocation, OTRequest, AttendanceLog, Fine, SalaryRecord, AppConfig } from './types';
+import { User, Department, DutyAllocation, OTRequest, AttendanceLog, Fine, SalaryRecord, AppConfig, LeaveRequest, ApprovalStatus } from './types';
 
 // ─── Storage Keys ───────────────────────────────────────────────────────────
 const KEYS = {
@@ -45,9 +45,9 @@ export function getConfig(): AppConfig {
 
 function defaultConfig(): AppConfig {
   return {
-    hospitalLat: 11.0168, // Placeholder – add real coords later
+    hospitalLat: 11.0168,
     hospitalLng: 76.9558,
-    hospitalName: "Mother Care Hospital",
+    hospitalName: 'Mother Care Hospital',
     defaultHourlyWage: 50,
     lateFineAmount: 50,
   };
@@ -123,7 +123,6 @@ export function updateUser(id: string, data: Partial<User>): User | null {
   if (idx === -1) return null;
   users[idx] = { ...users[idx], ...data, perMinuteWage: (data.hourlyWage ?? users[idx].hourlyWage) / 60 };
   setItem(KEYS.USERS, users);
-  // Update current user if self
   const current = getCurrentUser();
   if (current?.id === id) setCurrentUser(users[idx]);
   return users[idx];
@@ -164,15 +163,83 @@ export function createDuty(data: Omit<DutyAllocation, 'id' | 'isLocked' | 'creat
   const duty: DutyAllocation = {
     ...data,
     id: genId(),
-    isLocked: true, // Locked immediately on creation
+    isLocked: true,
     createdAt: new Date().toISOString(),
   };
   setItem(KEYS.DUTIES, [...duties, duty]);
   return duty;
 }
 
+export function editDuty(
+  id: string,
+  data: { shiftType: '8hr' | '9hr'; startTime: string; endTime: string; editNote?: string },
+  editorId: string
+): DutyAllocation | null {
+  const duties = getDuties();
+  const idx = duties.findIndex((d) => d.id === id);
+  if (idx === -1) return null;
+  duties[idx] = {
+    ...duties[idx],
+    shiftType: data.shiftType,
+    startTime: data.startTime,
+    endTime: data.endTime,
+    editedBy: editorId,
+    editedAt: new Date().toISOString(),
+    editNote: data.editNote,
+  };
+  setItem(KEYS.DUTIES, duties);
+  return duties[idx];
+}
+
+export function copyLastMonthDuties(targetYear: number, targetMonth: number, allocatedBy: string): number {
+  // targetMonth is 1-indexed
+  const prevMonth = targetMonth === 1 ? 12 : targetMonth - 1;
+  const prevYear = targetMonth === 1 ? targetYear - 1 : targetYear;
+
+  const padM = (m: number) => String(m).padStart(2, '0');
+  const prevPrefix = `${prevYear}-${padM(prevMonth)}`;
+  const targetPrefix = `${targetYear}-${padM(targetMonth)}`;
+
+  const duties = getDuties();
+  const lastMonthDuties = duties.filter((d) => d.date.startsWith(prevPrefix));
+
+  // Get days in target month
+  const daysInTarget = new Date(targetYear, targetMonth, 0).getDate();
+  const daysInPrev = new Date(prevYear, prevMonth, 0).getDate();
+
+  let copied = 0;
+  const newDuties: DutyAllocation[] = [];
+
+  lastMonthDuties.forEach((d) => {
+    const dayNum = parseInt(d.date.slice(8, 10), 10);
+    if (dayNum > daysInTarget) return; // skip if target month is shorter
+    const newDate = `${targetPrefix}-${padM(Math.min(dayNum, daysInTarget))}`;
+    // Skip if already exists for that staff/date
+    const alreadyExists = duties.some((ex) => ex.staffId === d.staffId && ex.date === newDate)
+      || newDuties.some((n) => n.staffId === d.staffId && n.date === newDate);
+    if (alreadyExists) return;
+    newDuties.push({
+      id: genId(),
+      staffId: d.staffId,
+      date: newDate,
+      shiftType: d.shiftType,
+      startTime: d.startTime,
+      endTime: d.endTime,
+      isLocked: true,
+      allocatedBy,
+      createdAt: new Date().toISOString(),
+      editNote: `Copied from ${d.date}`,
+    });
+    copied++;
+  });
+
+  if (newDuties.length > 0) {
+    setItem(KEYS.DUTIES, [...duties, ...newDuties]);
+  }
+  return copied;
+}
+
 export function deleteDuty(id: string): void {
-  // Only unlocked duties can be deleted (shouldn't happen since all are locked on create)
   const duties = getDuties();
   const duty = duties.find((d) => d.id === id);
   if (duty && !duty.isLocked) {
@@ -236,25 +303,30 @@ export function getTodayAttendance(staffId: string): AttendanceLog | undefined {
   return getAttendanceLogs().find((a) => a.staffId === staffId && a.date === today);
 }
 
-export function checkIn(staffId: string, geo?: { lat: number; lng: number; accuracy: number }): AttendanceLog {
+export function checkIn(
+  staffId: string,
+  geo?: { lat: number; lng: number; accuracy: number }
+): { log: AttendanceLog; lateMinutes: number; lateFineAmount: number } {
   const logs = getAttendanceLogs();
   const user = getUserById(staffId);
   const expectedMinutes = (user?.shiftType === '9hr' ? 9 : 8) * 60;
-  
+
   const todayDate = new Date().toISOString().slice(0, 10);
   const checkInTime = new Date().toISOString();
-  
-  // Calculate lateness based on allocated duty or default 08:00
-  let isLate = false;
-  const duties = getDutiesForStaff(staffId).find(d => d.date === todayDate);
-  const shiftStart = duties ? duties.startTime : '08:00';
+
+  // Find shift start time
+  const duty = getDutiesForStaff(staffId).find((d) => d.date === todayDate);
+  const shiftStart = duty ? duty.startTime : '08:00';
   const startDateTime = new Date(`${todayDate}T${shiftStart}:00`);
   const checkInDateTime = new Date(checkInTime);
-  
-  // If checkIn is > 15 minutes after start time
-  if ((checkInDateTime.getTime() - startDateTime.getTime()) > 15 * 60 * 1000) {
-    isLate = true;
-  }
+
+  // Calculate late minutes (any time after shift start = late)
+  const diffMs = checkInDateTime.getTime() - startDateTime.getTime();
+  const rawLateMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  const isLate = rawLateMinutes > 0;
+
+  const perMinuteWage = user?.perMinuteWage ?? 50 / 60;
+  const lateFineAmount = isLate ? Math.round(rawLateMinutes * perMinuteWage * 100) / 100 : 0;
 
   const log: AttendanceLog = {
     id: genId(),
@@ -264,12 +336,28 @@ export function checkIn(staffId: string, geo?: { lat: number; lng: number; accur
     checkInGeo: geo,
     expectedMinutes,
     isLate,
+    lateMinutes: rawLateMinutes,
+    lateFineAmount,
     status: 'checked-in',
   };
   logs.push(log);
   setItem(KEYS.ATTENDANCE, logs);
-  
-  return log;
+
+  // Create a fine record immediately for late check-in
+  if (isLate && lateFineAmount > 0) {
+    createFineRecord({
+      staffId,
+      staffName: user?.name ?? 'Unknown',
+      attendanceId: log.id,
+      date: todayDate,
+      fineType: 'late-checkin',
+      shortfallMinutes: rawLateMinutes,
+      perMinuteWage,
+      fineAmount: lateFineAmount,
+    });
+  }
+
+  return { log, lateMinutes: rawLateMinutes, lateFineAmount };
 }
 
 export function checkOut(logId: string, geo?: { lat: number; lng: number; accuracy: number }): { log: AttendanceLog; fine: Fine | null } {
@@ -301,38 +389,16 @@ export function checkOut(logId: string, geo?: { lat: number; lng: number; accura
 
   let fine: Fine | null = null;
   if (fineAmount > 0) {
-    fine = createFine({
+    fine = createFineRecord({
       staffId: log.staffId,
       staffName: user?.name ?? 'Unknown',
       attendanceId: log.id,
       date: log.date,
+      fineType: 'early-checkout',
       shortfallMinutes,
       perMinuteWage,
       fineAmount,
     });
-  }
-
-  // Handle late check-in fine limit (if > 2 times late in month)
-  if (log.isLate) {
-    const monthLogs = logs.filter(l => 
-      l.staffId === log.staffId && 
-      l.status === 'checked-out' && 
-      l.isLate && 
-      new Date(l.date).getMonth() === new Date(log.date).getMonth()
-    );
-    if (monthLogs.length > 2) {
-      // Create additional fine
-      const lateFineAmount = getConfig().lateFineAmount;
-      createFine({
-        staffId: log.staffId,
-        staffName: user?.name ?? 'Unknown',
-        attendanceId: `${log.id}-late`,
-        date: log.date,
-        shortfallMinutes: 0,
-        perMinuteWage: 0,
-        fineAmount: lateFineAmount,
-      });
-    }
   }
 
   return { log: logs[idx], fine };
@@ -347,7 +413,7 @@ export function getFinesForStaff(staffId: string): Fine[] {
   return getFines().filter((f) => f.staffId === staffId);
 }
 
-function createFine(data: Omit<Fine, 'id' | 'fineStatus' | 'createdAt'>): Fine {
+function createFineRecord(data: Omit<Fine, 'id' | 'fineStatus' | 'createdAt'>): Fine {
   const fines = getFines();
   const fine: Fine = {
     ...data,
@@ -390,18 +456,16 @@ export function generateMonthlySalary(staffId: string, month: number, year: numb
   const workingDays = attendance.filter((a) => a.status === 'checked-out').length;
   const baseSalary = workingDays * (user.shiftType === '9hr' ? 9 : 8) * user.hourlyWage;
 
-  // OT wages: approved OT requests for this month
   const otRequests = getOTRequests().filter((r) => {
     const d = new Date(r.date);
     return r.staffId === staffId && r.status === 'approved' && d.getMonth() + 1 === month && d.getFullYear() === year;
   });
-  const otWages = otRequests.length * 8 * user.hourlyWage * 1.5; // OT at 1.5x
+  const otWages = otRequests.length * 8 * user.hourlyWage * 1.5;
 
   const finesDeducted = fines.reduce((sum, f) => sum + f.fineAmount, 0);
   const netSalary = baseSalary + otWages - finesDeducted;
 
   const salaries = getSalaryRecords();
-  // Remove existing record for same month/year/staff if any
   const filtered = salaries.filter(
     (s) => !(s.staffId === staffId && s.month === month && s.year === year)
   );
@@ -427,13 +491,19 @@ export function getLeaveRequests(): LeaveRequest[] {
   return getItem<LeaveRequest>(KEYS.LEAVES);
 }
 
-export function createLeaveRequest(data: Omit<LeaveRequest, 'id' | 'replacementStatus' | 'adminStatus' | 'createdAt'>): LeaveRequest {
+export function createLeaveRequest(
+  data: Omit<LeaveRequest, 'id' | 'replacementStatus' | 'adminStatus' | 'jdStatus' | 'mdStatus' | 'createdAt'>
+): LeaveRequest {
   const leaves = getLeaveRequests();
+  // AL has no replacement; EL with noReplacementAvailable also has no replacement
+  const needsReplacement = data.leaveType !== 'AL' && !data.noReplacementAvailable;
   const leave: LeaveRequest = {
     ...data,
     id: genId(),
-    replacementStatus: 'pending',
+    replacementStatus: needsReplacement ? 'pending' : 'na',
     adminStatus: 'pending',
+    jdStatus: 'pending',
+    mdStatus: 'pending',
     createdAt: new Date().toISOString(),
   };
   setItem(KEYS.LEAVES, [...leaves, leave]);
@@ -442,20 +512,61 @@ export function createLeaveRequest(data: Omit<LeaveRequest, 'id' | 'replacementS
 
 export function updateLeaveReplacementStatus(id: string, status: 'accepted' | 'declined'): void {
   const leaves = getLeaveRequests();
-  const idx = leaves.findIndex(l => l.id === id);
+  const idx = leaves.findIndex((l) => l.id === id);
   if (idx !== -1) {
     leaves[idx].replacementStatus = status;
     setItem(KEYS.LEAVES, leaves);
   }
 }
 
-export function updateLeaveAdminStatus(id: string, status: 'approved' | 'declined'): void {
+export function updateLeaveAdminStatus(id: string, status: ApprovalStatus, actorId?: string): void {
   const leaves = getLeaveRequests();
-  const idx = leaves.findIndex(l => l.id === id);
+  const idx = leaves.findIndex((l) => l.id === id);
   if (idx !== -1) {
     leaves[idx].adminStatus = status;
+    if (actorId) leaves[idx].adminActedBy = actorId;
     setItem(KEYS.LEAVES, leaves);
   }
+}
+
+export function updateLeaveJDStatus(id: string, status: ApprovalStatus, actorId?: string): void {
+  const leaves = getLeaveRequests();
+  const idx = leaves.findIndex((l) => l.id === id);
+  if (idx !== -1) {
+    leaves[idx].jdStatus = status;
+    if (actorId) leaves[idx].jdActedBy = actorId;
+    setItem(KEYS.LEAVES, leaves);
+  }
+}
+
+export function updateLeaveMDStatus(id: string, status: ApprovalStatus, actorId?: string): void {
+  const leaves = getLeaveRequests();
+  const idx = leaves.findIndex((l) => l.id === id);
+  if (idx !== -1) {
+    leaves[idx].mdStatus = status;
+    if (actorId) leaves[idx].mdActedBy = actorId;
+    setItem(KEYS.LEAVES, leaves);
+  }
+}
+
+/** 
+ * Determines the overall computed approval status for a leave request.
+ * - AL: all three (admin + jd + md) must approve
+ * - EL (no replacement): admin approves first, then jd OR md approves  → approved
+ * - CL/EC: replacement accepted first, then admin OR jd OR md approves → approved
+ */
+export function getOverallLeaveStatus(leave: LeaveRequest): 'approved' | 'declined' | 'pending' {
+  const { adminStatus, jdStatus, mdStatus, leaveType } = leave;
+  if ([adminStatus, jdStatus, mdStatus].some((s) => s === 'declined')) return 'declined';
+
+  if (leaveType === 'AL') {
+    return adminStatus === 'approved' && jdStatus === 'approved' && mdStatus === 'approved'
+      ? 'approved'
+      : 'pending';
+  }
+  // For other types: any one approval is sufficient
+  if (adminStatus === 'approved' || jdStatus === 'approved' || mdStatus === 'approved') return 'approved';
+  return 'pending';
 }
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
@@ -463,7 +574,6 @@ export function seedIfEmpty(): void {
   if (typeof window === 'undefined') return;
   const users = getUsers();
 
-  // Default users
   const defaultUsers: Omit<User, 'id' | 'perMinuteWage'>[] = [
     {
       name: 'Dr. Priya Sharma',
@@ -516,16 +626,15 @@ export function seedIfEmpty(): void {
       phone: '9876543213',
       department: 'OT',
       designation: 'Staff Nurse',
-      hourlyWage: 50,
+      hourlyWage: 60,
       shiftType: '8hr',
       joinDate: '2022-03-15',
       isActive: true,
     },
   ];
 
-  // Only create users that don't exist by email
   defaultUsers.forEach((u) => {
-    if (!users.some(existing => existing.email.toLowerCase() === u.email.toLowerCase())) {
+    if (!users.some((existing) => existing.email.toLowerCase() === u.email.toLowerCase())) {
       createUser(u);
     }
   });
