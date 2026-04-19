@@ -393,14 +393,7 @@ export async function getTodayAttendance(staffId: string): Promise<AttendanceLog
   return data as unknown as AttendanceLog;
 }
 
-<<<<<<< HEAD
-export async function checkIn(
-  staffId: string,
-  geo?: { lat: number; lng: number; accuracy: number }
-): Promise<{ log: AttendanceLog; lateMinutes: number; lateFineAmount: number }> {
-=======
 export async function checkIn(staffId: string, geo?: { lat: number; lng: number; accuracy: number }): Promise<{ log: AttendanceLog; lateMinutes: number; lateFineAmount: number }> {
->>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
   const todayDate = new Date().toISOString().slice(0, 10);
   const checkInTime = new Date().toISOString();
   
@@ -408,14 +401,6 @@ export async function checkIn(staffId: string, geo?: { lat: number; lng: number;
   if (!user) throw new Error('User not found');
   const expectedMinutes = (user.shiftType === '9hr' ? 9 : 8) * 60;
   
-<<<<<<< HEAD
-  // Calculate lateness
-  const { data: duty } = await supabase.from('mch_duties').select('start_time').eq('staff_id', staffId).eq('date', todayDate).single();
-  const shiftStart = duty ? duty.start_time : '08:00';
-  const startDateTime = new Date(`${todayDate}T${shiftStart}:00`);
-  const checkInDateTime = new Date(checkInTime);
-
-=======
   // Find shift start time
   const duties = await getDutiesForStaff(staffId);
   const duty = duties.find((d) => d.date === todayDate);
@@ -424,17 +409,11 @@ export async function checkIn(staffId: string, geo?: { lat: number; lng: number;
   const checkInDateTime = new Date(checkInTime);
 
   // Calculate late minutes
->>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
   const diffMs = checkInDateTime.getTime() - startDateTime.getTime();
   const lateMinutes = Math.max(0, Math.floor(diffMs / 60000));
   const isLate = lateMinutes > 0;
 
-<<<<<<< HEAD
-  const perMinuteWage = user.perMinuteWage;
-  const lateFineAmount = isLate ? Math.round(lateMinutes * perMinuteWage * 100) / 100 : 0;
-=======
   const lateFineAmount = isLate ? Math.round(lateMinutes * user.perMinuteWage * 100) / 100 : 0;
->>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
 
   const { data: log, error } = await supabase
     .from('mch_attendance')
@@ -454,10 +433,7 @@ export async function checkIn(staffId: string, geo?: { lat: number; lng: number;
 
   if (error) throw error;
 
-<<<<<<< HEAD
-=======
   // Create auto fine for late check-in if applicable
->>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
   if (isLate && lateFineAmount > 0) {
     await createFine({
       staffId,
@@ -466,11 +442,7 @@ export async function checkIn(staffId: string, geo?: { lat: number; lng: number;
       date: todayDate,
       fineType: 'late-checkin',
       shortfallMinutes: lateMinutes,
-<<<<<<< HEAD
-      perMinuteWage,
-=======
       perMinuteWage: user.perMinuteWage,
->>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
       fineAmount: lateFineAmount,
     });
   }
@@ -551,7 +523,7 @@ export async function createFine(data: Omit<Fine, 'id' | 'fineStatus' | 'created
       date: data.date,
       fine_type: data.fineType,
       shortfall_minutes: data.shortfallMinutes,
-      per_minute_wage: data.perMinuteWage,
+      per_minute_wage: data.per_minute_wage,
       fine_amount: data.fineAmount,
       fine_status: 'pending'
     }])
@@ -692,17 +664,25 @@ export function getOverallLeaveStatus(leave: LeaveRequest): 'approved' | 'declin
 
 // ─── Seed Data ────────────────────────────────────────────────────────────────
 export async function seedIfEmpty(): Promise<void> {
-  const { count } = await supabase.from('mch_users').select('*', { count: 'exact', head: true });
-  if (count && count > 0) return;
+  try {
+    const { count, error } = await supabase.from('mch_users').select('*', { count: 'exact', head: true });
+    if (error) {
+      console.warn('Seed check failed (probably no tables yet):', error.message);
+      return; 
+    }
+    if (count && count > 0) return;
 
-  const defaultUsers = [
-    { name: 'Dr. Priya Sharma', role: 'md', staffId: 'MCH-MD-001', email: 'md@mch.com', password: 'md123', phone: '9876543210', department: 'Management', designation: 'Managing Director', hourlyWage: 500, shiftType: '9hr', joinDate: '2020-01-01', isActive: true },
-    { name: 'Rajesh Kumar', role: 'jd', staffId: 'MCH-JD-001', email: 'jd@mch.com', password: 'jd123', phone: '9876543211', department: 'Management', designation: 'Joint Director', hourlyWage: 200, shiftType: '9hr', joinDate: '2021-01-01', isActive: true },
-    { name: 'Anitha Rajan', role: 'admin', staffId: 'MCH-ADM-001', email: 'admin@mch.com', password: 'admin123', phone: '9876543212', department: 'Administration', designation: 'Hospital Administrator', hourlyWage: 150, shiftType: '9hr', joinDate: '2021-06-01', isActive: true },
-    { name: 'Kavitha Nair', role: 'staff', staffId: 'MCH-STF-001', email: 'staff@mch.com', password: 'staff123', phone: '9876543213', department: 'OT', designation: 'Staff Nurse', hourlyWage: 60, shiftType: '8hr', joinDate: '2022-03-15', isActive: true },
-  ];
+    const defaultUsers = [
+      { name: 'Dr. Priya Sharma', role: 'md', staffId: 'MCH-MD-001', email: 'md@mch.com', password: 'md123', phone: '9876543210', department: 'Management', designation: 'Managing Director', hourlyWage: 500, shiftType: '9hr', joinDate: '2020-01-01', isActive: true },
+      { name: 'Rajesh Kumar', role: 'jd', staffId: 'MCH-JD-001', email: 'jd@mch.com', password: 'jd123', phone: '9876543211', department: 'Management', designation: 'Joint Director', hourlyWage: 200, shiftType: '9hr', joinDate: '2021-01-01', isActive: true },
+      { name: 'Anitha Rajan', role: 'admin', staffId: 'MCH-ADM-001', email: 'admin@mch.com', password: 'admin123', phone: '9876543212', department: 'Administration', designation: 'Hospital Administrator', hourlyWage: 150, shiftType: '9hr', joinDate: '2021-06-01', isActive: true },
+      { name: 'Kavitha Nair', role: 'staff', staffId: 'MCH-STF-001', email: 'staff@mch.com', password: 'staff123', phone: '9876543213', department: 'OT', designation: 'Staff Nurse', hourlyWage: 60, shiftType: '8hr', joinDate: '2022-03-15', isActive: true },
+    ];
 
-  for (const u of defaultUsers) {
-    await createUser(u);
+    for (const u of defaultUsers) {
+      await createUser(u as any);
+    }
+  } catch (err) {
+    console.error('seedIfEmpty fatal error:', err);
   }
 }

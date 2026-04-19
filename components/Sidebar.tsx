@@ -104,8 +104,12 @@ export default function Sidebar({ user }: { user: User }) {
   const [pendingOT, setPendingOT] = useState(0);
 
   useEffect(() => {
-    const pending = getOTRequests().filter(r => r.status === 'pending').length;
-    setPendingOT(pending);
+    const loadPending = async () => {
+      const all = await getOTRequests();
+      const pendingCount = all.filter(r => r.status === 'pending').length;
+      setPendingOT(pendingCount);
+    };
+    loadPending();
   }, []);
 
   const handleLogout = () => {

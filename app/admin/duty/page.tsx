@@ -229,12 +229,6 @@ export default function DutyPage() {
           </form>
         </div>
       </div>
-<<<<<<< HEAD
-=======
-    </DashboardLayout>
-  );
-}
->>>>>>> dd0ed7c (Professional integration of remote features with Supabase migration)
     </DashboardLayout>
   );
 }

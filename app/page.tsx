@@ -8,12 +8,27 @@ export default function HomePage() {
 
   useEffect(() => {
     const init = async () => {
-      await seedIfEmpty();
-      const user = getCurrentUser();
-      if (!user) {
+      try {
+        console.log('App starting: seeding...');
+        await seedIfEmpty();
+        console.log('Seed check complete.');
+        const user = getCurrentUser();
+        if (!user) {
+          router.replace('/login');
+        } else {
+          // Verify role is still valid
+          const validRoles = ['staff', 'admin', 'jd', 'md'];
+          if (validRoles.includes(user.role)) {
+            router.replace(`/${user.role}`);
+          } else {
+            console.warn('Invalid role detected:', user.role);
+            router.replace('/login');
+          }
+        }
+      } catch (err) {
+        console.error('App failed to initialize:', err);
+        // If it hangs here, redirect to login as fallback
         router.replace('/login');
-      } else {
-        router.replace(`/${user.role}`);
       }
     };
     init();
